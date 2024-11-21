@@ -7,7 +7,7 @@ void showPage3(TFT_eSPI &tft, TFT_eSprite &background,RadarData &radarData) {
     static TFT_eSprite txtSprite = TFT_eSprite(&tft);
     static int x = 0;
 
-    background.fillSprite(TFT_BROWN);
+    background.fillSprite(TFT_RED);
     txtSprite.createSprite(160,80);
     txtSprite.setTextColor(TFT_WHITE,TFT_BLACK);
     txtSprite.fillSprite(TFT_BLACK);
