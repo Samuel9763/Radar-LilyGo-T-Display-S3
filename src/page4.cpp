@@ -81,6 +81,7 @@ void showPage4(TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
     float breathY = waveBaseY + amplitude * sin(breathPhase);
 
     // 清除前一段的波形以實現滾動效果
+    
     int clearWidth = 25;  
     waveformsSprite.fillRect(x, 0, clearWidth, waveformHeight, TFT_BLACK);
 
