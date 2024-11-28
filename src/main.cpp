@@ -8,6 +8,9 @@
 #include "page5.h"
 #include "RadarData.h"
 
+#define PIN_POWER_ON 15 // LCD and battery Power Enable
+#define PIN_LCD_BL 38 // BackLight enable pin (see Dimming.txt)
+
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite background = TFT_eSprite(&tft);  // Background sprite shared across pages
 
@@ -31,8 +34,8 @@ int currentPage = 4;
 const int totalPages = 5;            // Total number of pages
 
 // Pin definitions for buttons
-Button2 buttonUp(14);                 // Up button on GPIO0
-Button2 buttonDown(0);              // Down button on GPIO14
+Button2 buttondown(14);                 // Up button on GPIO0
+Button2 buttonUp(0);              // Down button on GPIO14
 
 void showPage(int page) {
   switch (page) {
@@ -43,18 +46,27 @@ void showPage(int page) {
     case 5: showPage5(tft, background,radarData); break;
   }
 }
+
 void handleUp(Button2 &btn) {
+    Serial.println("按鈕已成功按下");
+
     currentPage--;
     if (currentPage < 1) currentPage = totalPages;  // Wrap around to the last page
     showPage(currentPage);
 }
 
 void handleDown(Button2 &btn) {
+    Serial.println("按鈕已成功按下");
+
     currentPage++;
     if (currentPage > totalPages) currentPage = 1;  // Wrap around to the first page
     showPage(currentPage);
 }
 
+// 長按處理函數
+void handleLongPress(Button2 &btn) {
+    esp_deep_sleep_start();  // 進入深度睡眠模式
+}
 
 // Separate function: Logs the parsed RadarData
 void printLog(const RadarData& data) {
@@ -115,38 +127,35 @@ void printLog3(const RadarData& data) {
            data.sumEnergyBreathWfm, data.sumEnergyHeartWfm, (float)totalPacketsReceived);
 }
 
-
 bool readUARTData() {
-
-	// Increment total packets received counter
-	totalPacketsReceived++;
-	
-	for (int j = 0; j < ((EXPECTED_DATA_SIZE-8)/8); j++) {
-		static int syncPos = 0;  // Tracks the current position in the sync header comparison
-		uart.readBytes(uartBuffer, 8);  // Read UART data into buffe
-		for (int i = 0; i < 8; i++) {
-		 
-			if (uartBuffer[i] == expectedSyncHeader[syncPos]) {
-				syncPos++;
-				if (syncPos == sizeof(expectedSyncHeader) / sizeof(expectedSyncHeader[0])) {
-					if (uart.available() >= EXPECTED_DATA_SIZE-8) {
-						uart.readBytes(&uartBuffer[8], EXPECTED_DATA_SIZE-8);
-						//printf("Sync header matched. Parsing RadarData structure.\n");
-						memcpy(&radarData, &uartBuffer[0], sizeof(RadarData));
-						successfulParses++;
-						syncPos = 0;
-						return true;
-					}
-				}
-			} else {
-				syncPos = 0;  // Reset if header mismatch occurs
-				break;
-			}
-		}
-	}
+    // Increment total packets received counter
+    totalPacketsReceived++;
+    
+    for (int j = 0; j < ((EXPECTED_DATA_SIZE-8)/8); j++) {
+        static int syncPos = 0;  // Tracks the current position in the sync header comparison
+        uart.readBytes(uartBuffer, 8);  // Read UART data into buffer
+        for (int i = 0; i < 8; i++) {
+         
+            if (uartBuffer[i] == expectedSyncHeader[syncPos]) {
+                syncPos++;
+                if (syncPos == sizeof(expectedSyncHeader) / sizeof(expectedSyncHeader[0])) {
+                    if (uart.available() >= EXPECTED_DATA_SIZE-8) {
+                        uart.readBytes(&uartBuffer[8], EXPECTED_DATA_SIZE-8);
+                        //printf("Sync header matched. Parsing RadarData structure.\n");
+                        memcpy(&radarData, &uartBuffer[0], sizeof(RadarData));
+                        successfulParses++;
+                        syncPos = 0;
+                        return true;
+                    }
+                }
+            } else {
+                syncPos = 0;  // Reset if header mismatch occurs
+                break;
+            }
+        }
+    }
     return false;  // Failed to parse a valid packet
 }
-
 
 bool readUARTData_old() {
     static int syncPos = 0;  // Tracks the current position in the sync header comparison
@@ -192,16 +201,29 @@ bool readUARTData_old() {
     return false;  // Failed to parse a valid packet
 }
 
-
-
 void setup() {
+    
+    Serial.begin(9600);  // 初始化 Serial 通訊，波特率設置為 9600
+
+
+    pinMode(PIN_POWER_ON, OUTPUT); //triggers the LCD backlight
+    pinMode(PIN_LCD_BL, OUTPUT); // BackLight enable pin
+    digitalWrite(PIN_POWER_ON, HIGH);
+    digitalWrite(PIN_LCD_BL, HIGH);
+
     tft.init();
     tft.setRotation(3);
     background.createSprite(tft.width(), tft.height());
     background.fillSprite(TFT_BLACK);
     // Configure buttons
-    buttonUp.setPressedHandler(handleUp);
-    buttonDown.setPressedHandler(handleDown);
+    buttondown.setPressedHandler(handleUp);
+    buttonUp.setPressedHandler(handleDown);
+
+    // 設定長按時間為一秒
+    buttondown.setLongClickTime(1000);  // 設置長按時間為 1000 毫秒
+
+    // 設定長按事件處理器
+    buttondown.setLongClickHandler(handleLongPress);  // 當長按“向上”按鈕時，呼叫 handleLongPress
 
     // UART initialization
     uart.begin(BAUD_RATE, SERIAL_8N1, RX_PIN, TX_PIN);
@@ -212,14 +234,18 @@ void setup() {
 }
 
 void loop() {
-    buttonUp.loop();     // Poll the up button
-    buttonDown.loop();   // Poll the down button
+    buttondown.loop();     // Poll the up button
+    buttonUp.loop();   // Poll the down button
     //readUARTData();
+
+
     if (readUARTData()) {   
         printLog3(radarData);  // Log parsed data
     } else {
         printf("Failed to parse a valid packet.\n");
     }
+
+
     showPage(currentPage);
     /*
     if (readUARTData()) {
