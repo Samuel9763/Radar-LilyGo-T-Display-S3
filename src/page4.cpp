@@ -42,11 +42,11 @@ void showPage4(TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
     static bool isInitialized = false;
 
     if (!isInitialized) {
-        waveformsSprite.createSprite(background.width() * 3 / 4, background.height());
+        waveformsSprite.createSprite(background.width() * 6.9 / 10, background.height());
         waveformsSprite.fillSprite(TFT_BLACK); // 填充背景為黑色
-        heartRateSprite.createSprite(70, 75); // 設定大小以適應數字
+        heartRateSprite.createSprite(100, 75); // 設定大小以適應數字
         heartRateSprite.fillSprite(TFT_BLACK); // 填充背景為黑色
-        breathRateSprite.createSprite(70, 75); // 設定大小以適應數字
+        breathRateSprite.createSprite(100, 75); // 設定大小以適應數字
         breathRateSprite.fillSprite(TFT_BLACK); // 填充背景為黑色
         isInitialized = true; // 設置初始化標誌為 true，防止重複初始化
     }
@@ -101,17 +101,35 @@ void showPage4(TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
     // 將波形精靈推送到背景
     waveformsSprite.pushToSprite(&background, 0, 0, TFT_BLACK);
 
+    // Update heart rate number sprite
+    String heartRateStr;
+    if (radarData.heartRateEst < 10) {
+        heartRateStr = "00" + String((int)radarData.heartRateEst);
+    } else if (radarData.heartRateEst < 100) {
+        heartRateStr = "0" + String((int)radarData.heartRateEst);
+    } else {
+        heartRateStr = String((int)radarData.heartRateEst);
+    }
     // 更新心率數字精靈
     heartRateSprite.fillSprite(TFT_BLACK);
     heartRateSprite.setTextColor(TFT_RED, TFT_BLACK);
-    heartRateSprite.drawString(String((int)radarData.heartRateEst), heartRateSprite.width() * 0.05, heartRateSprite.height() * 0.2, 7);
-    heartRateSprite.pushToSprite(&background, background.width() - 70, 5, TFT_BLACK);
+    heartRateSprite.drawString(heartRateStr, heartRateSprite.width() * 0.05, heartRateSprite.height() * 0.2, 7);
+    heartRateSprite.pushToSprite(&background, background.width() - 100, 5, TFT_BLACK);
 
+    // Update breathing rate number sprite
+    String breathRateStr;
+    if (radarData.breathingRateEst < 10) {
+        breathRateStr = "00" + String((int)radarData.breathingRateEst);
+    } else if (radarData.breathingRateEst < 100) {
+        breathRateStr = "0" + String((int)radarData.breathingRateEst);
+    } else {
+        breathRateStr = String((int)radarData.breathingRateEst);
+    }
     // 更新呼吸率數字精靈
     breathRateSprite.fillSprite(TFT_BLACK);
     breathRateSprite.setTextColor(TFT_GREEN, TFT_BLACK);
-    breathRateSprite.drawString(String((int)radarData.breathingRateEst), breathRateSprite.width() * 0.05, breathRateSprite.height() * 0.2, 7);
-    breathRateSprite.pushToSprite(&background, background.width() - 70, background.height() - 85, TFT_BLACK);
+    breathRateSprite.drawString(breathRateStr, breathRateSprite.width() * 0.05, breathRateSprite.height() * 0.2, 7);
+    breathRateSprite.pushToSprite(&background, background.width() - 100, background.height() - 85, TFT_BLACK);
 
     // 將背景精靈推送到顯示屏
     background.pushSprite(0, 0);

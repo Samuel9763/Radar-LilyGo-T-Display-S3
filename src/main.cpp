@@ -212,7 +212,7 @@ void setup() {
     digitalWrite(PIN_LCD_BL, HIGH);
 
     tft.init();
-    tft.setRotation(3);
+    tft.setRotation(1);
     background.createSprite(tft.width(), tft.height());
     background.fillSprite(TFT_BLACK);
     // Configure buttons

@@ -37,19 +37,19 @@ void showPage3(TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
 
     if (!isInitialized) {
         // Create heart waveform sprite
-        heartWaveform.createSprite(background.width() * 3 / 4, background.height() / 2);
+        heartWaveform.createSprite(background.width() * 7 / 10, background.height() / 2);
         heartWaveform.fillSprite(TFT_BLACK);
 
         // Create breathing waveform sprite
-        breathWaveform.createSprite(background.width() * 3 / 4, background.height() / 2);
+        breathWaveform.createSprite(background.width() * 7 / 10, background.height() / 2);
         breathWaveform.fillSprite(TFT_BLACK);
 
         // Create heart rate number sprite
-        heartRateSprite.createSprite(70, 75); // Adjust size to fit the number
+        heartRateSprite.createSprite(90, 75); // Adjust size to fit the number
         heartRateSprite.fillSprite(TFT_YELLOW);
 
         // Create breathing rate number sprite
-        breathRateSprite.createSprite(70, 75); // Adjust size to fit the number
+        breathRateSprite.createSprite(90, 75); // Adjust size to fit the number
         breathRateSprite.fillSprite(TFT_BLACK);
 
         isInitialized = true;
@@ -108,27 +108,42 @@ void showPage3(TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
     breathWaveform.pushToSprite(&background, 0, background.height() / 2, TFT_BLACK); // Lower-left for breathing waveform
 
     // Update heart rate number sprite
+    String heartRateStr;
+    if (radarData.heartRateEst < 10) {
+        heartRateStr = "00" + String((int)radarData.heartRateEst);
+    } else if (radarData.heartRateEst < 100) {
+        heartRateStr = "0" + String((int)radarData.heartRateEst);
+    } else {
+        heartRateStr = String((int)radarData.heartRateEst);
+    }
+    // Update heart rate number sprite
     heartRateSprite.fillSprite(TFT_BLACK); // Clear previous number
     heartRateSprite.setTextColor(TFT_RED, TFT_BLACK);
     //heartRateSprite.setTextDatum(MC_DATUM);
     //heartRateSprite.setTextSize(4);
     heartRateSprite.fillSprite(TFT_BLACK);
-    heartRateSprite.drawString(String((int)radarData.heartRateEst), heartRateSprite.width()*0.05, heartRateSprite.height()*0.2,7);
-    heartRateSprite.pushToSprite(&background, background.width() - 70, 5, TFT_BLACK); // Top-right corner
+    heartRateSprite.drawString(heartRateStr, heartRateSprite.width()*0.05, heartRateSprite.height()*0.2,6);
+    heartRateSprite.pushToSprite(&background, background.width() - 90, 5, TFT_BLACK); // Top-right corner
 
     // Update breathing rate number sprite
 
-    // Format the breathing rate number to always display two digits
-    String breathRateStr = radarData.breathingRateEst < 10 
-                       ? "0" + String((int)radarData.breathingRateEst) 
-                       : String((int)radarData.breathingRateEst);
+    // Format the breathing rate number to always display 3 digits
+    // Update breathing rate number sprite
+    String breathRateStr;
+    if (radarData.breathingRateEst < 10) {
+        breathRateStr = "00" + String((int)radarData.breathingRateEst);
+    } else if (radarData.breathingRateEst < 100) {
+        breathRateStr = "0" + String((int)radarData.breathingRateEst);
+    } else {
+        breathRateStr = String((int)radarData.breathingRateEst);
+    }
     breathRateSprite.fillSprite(TFT_BLACK); // Clear previous number
     breathRateSprite.setTextColor(TFT_GREEN, TFT_BLACK);
     //breathRateSprite.setTextDatum(MC_DATUM);
     //breathRateSprite.setTextSize(4);
     breathRateSprite.fillSprite(TFT_BLACK);
-    breathRateSprite.drawString(breathRateStr, breathRateSprite.width()*0.05, breathRateSprite.height()*0.2,7);
-    breathRateSprite.pushToSprite(&background, background.width() - 70, background.height() - 85, TFT_BLACK); // Bottom-right corner
+    breathRateSprite.drawString(breathRateStr, breathRateSprite.width()*0.05, breathRateSprite.height()*0.2,6);
+    breathRateSprite.pushToSprite(&background, background.width() - 90, background.height() - 85, TFT_BLACK); // Bottom-right corner
 
     // Push the background sprite to the display
     background.pushSprite(0, 0);

@@ -1,92 +1,95 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
-#include "page4.h"
+#include "page5.h"
 #include "RadarData.h"
 #include <math.h> // For sine wave calculations
 
+struct FlashState {
+    unsigned long lastFlashTime = 0; // Tracks last flash toggle time
+    bool isHeartVisible = true;      // Current visibility of the heart
+};
 
-void drawLeafIcon(TFT_eSprite &sprite, int breathingRate) {
-    // Constants for leaf dimensions
-    int centerX = sprite.width() / 2;
-    int centerY = sprite.height() / 2;
-    int leafWidth = sprite.width() / 4;
-    int leafHeight = sprite.height() / 4;
+void drawHeartIcon(TFT_eSprite &sprite, int centerX, int centerY, int radius, uint16_t baseColor, int flashRate, int rotation, FlashState &flashState) {
+    // Calculate flash interval based on flashRate
+    unsigned long flashInterval = (flashRate > 0) ? (30000 / flashRate) : 1000; // Full period for one cycle (dark to light to dark)
 
-    // Pulse logic
-    static unsigned long lastUpdateTime = 0;
-    static float pulsePhase = 0.0f;  // Phase of the pulse (0.0 to 2π)
-
+    // Calculate the elapsed time within the current cycle
     unsigned long currentTime = millis();
-    float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;  // Convert to seconds
-    lastUpdateTime = currentTime;
+    float cycleProgress = (currentTime % flashInterval) / (float)flashInterval; // Progress as a fraction (0 to 1)
 
-    // Prevent divide-by-zero for breathing rate and ensure a reasonable pulse interval
-    float pulseInterval = (breathingRate > 0) ? max(60.0f / breathingRate, 1.0f) : 2.0f;  // Seconds per pulse
+    // Calculate sine wave intensity (0.3 to 1.0 range for smooth fade)
+    float intensity = 0.3f + 0.7f * (sin(cycleProgress * 2 * PI) + 1.0f) / 2.0f;
 
-    // Update pulse phase
-    pulsePhase += (deltaTime / pulseInterval) * 2 * PI;
-    if (pulsePhase > 2 * PI) pulsePhase -= 2 * PI;
+    // Extract base color components (assuming RGB565 format)
+    uint8_t r = (baseColor >> 11) & 0x1F; // Red component (5 bits)
+    uint8_t g = (baseColor >> 5) & 0x3F;  // Green component (6 bits)
+    uint8_t b = baseColor & 0x1F;         // Blue component (5 bits)
 
-    // Calculate scaling factor based on sine wave (0.9 to 1.1 range)
-    float scale = 0.9f + 0.2f * (sin(pulsePhase) + 1.0f) / 2.0f;
+    // Apply intensity to each color component
+    r = (uint8_t)(r * intensity);
+    g = (uint8_t)(g * intensity);
+    b = (uint8_t)(b * intensity);
 
-    // Create pulsing green color
-    uint8_t red = uint8_t(30 * scale);  // Slight red component for richness
-    uint8_t green = uint8_t(200 * scale);
-    uint8_t blue = uint8_t(30 * scale);
-    uint16_t leafColor = sprite.color565(red, green, blue);
+    // Reconstruct the modulated color
+    uint16_t modulatedColor = sprite.color565(r << 3, g << 2, b << 3);
 
-    // Clear the sprite for redrawing
-    sprite.fillSprite(TFT_BLACK);
+    // Convert rotation angle from degrees to radians
+    float angleRad = rotation * (PI / 180.0);
 
-    // Draw the leaf (scaled ellipse)
-    sprite.fillEllipse(centerX, centerY, leafWidth * scale, leafHeight * scale, leafColor);
+    // Helper function for rotation
+    auto rotatePoint = [&](int x, int y) {
+        int newX = centerX + cos(angleRad) * (x - centerX) - sin(angleRad) * (y - centerY);
+        int newY = centerY + sin(angleRad) * (x - centerX) + cos(angleRad) * (y - centerY);
+        return std::make_pair(newX, newY);
+    };
 
-    // Draw the central vein of the leaf
-    int veinHeight = leafHeight * scale;
-    sprite.drawLine(centerX, centerY - veinHeight, centerX, centerY + veinHeight, TFT_WHITE);
+    // Rotate and draw the two circles for the top part of the heart
+    auto [leftX, leftY] = rotatePoint(centerX - radius, centerY - radius / 2);
+    auto [rightX, rightY] = rotatePoint(centerX + radius, centerY - radius / 2);
+    sprite.fillCircle(leftX, leftY, radius, modulatedColor);
+    sprite.fillCircle(rightX, rightY, radius, modulatedColor);
 
-    // Push updated sprite to the display
-    //sprite.pushSprite(10, 10);  // Adjust position as needed
+    // Rotate and draw the triangle for the bottom part of the heart
+    auto [bottomLeftX, bottomLeftY] = rotatePoint(centerX - radius * 2, centerY);
+    auto [bottomRightX, bottomRightY] = rotatePoint(centerX + radius * 2, centerY);
+    auto [bottomTipX, bottomTipY] = rotatePoint(centerX, centerY + radius * 2);
+    sprite.fillTriangle(
+        bottomLeftX, bottomLeftY,
+        bottomRightX, bottomRightY,
+        bottomTipX, bottomTipY,
+        modulatedColor
+    );
 }
 
-
-void drawHeartIcon(TFT_eSprite &sprite, int heartRate) {
-    // Clear the sprite for redrawing
-    //sprite.fillSprite(TFT_BLACK);
-
+void drawSingleFlashingHeart(TFT_eSprite &sprite,int heartRate) {
+    static FlashState singleHeartState; // Independent state for single heart
     // Constants for heart dimensions
     int centerX = sprite.width() / 2;
     int centerY = sprite.height() / 2;
-    int radius = sprite.width() / 6; // Adjust for heart size
-
-    // Colors and flashing logic
-    uint16_t heartColor = TFT_RED;
-    static unsigned long lastFlashTime = 0;
-    static bool isHeartVisible = true;
-    
-    //heartRate=200;
-    // Calculate flash interval based on heart rate, with bounds checking
-    unsigned long flashInterval = (heartRate > 0) ? (30000 / heartRate) : 1000; // Half the period for both on and off states
-    
-    // Control flashing with smoother transitions
-    if (millis() - lastFlashTime > flashInterval) {
-        isHeartVisible = !isHeartVisible;
-        lastFlashTime = millis();
-    }
-    // Draw the heart icon if visible
-    if (isHeartVisible) {
-        // Two circles for the top part of the heart
-        sprite.fillCircle(centerX - radius, centerY - radius / 2, radius, heartColor);
-        sprite.fillCircle(centerX + radius, centerY - radius / 2, radius, heartColor);
-
-        // Triangle for the bottom part of the heart
-        sprite.fillTriangle(centerX - radius * 2, centerY,
-                            centerX + radius * 2, centerY,
-                            centerX, centerY + radius * 2, heartColor);
-    }
-    
+    int radius = sprite.width() / 8; // Adjust for heart size
+    // Draw a single heart icon flashing at 60 BPM
+    drawHeartIcon(sprite, centerX, centerY, radius, TFT_RED, heartRate/3,0, singleHeartState); // Center (40,40), radius 20, red color, 60 BPM
+    //drawHeartIcon(sprite, centerX, centerY, radius, TFT_RED, heartRate,0, singleHeartState); // Center (40,40), radius 20, red color, 60 BPM
 }
+
+void drawFourLeafClover(TFT_eSprite &cloverSprite,int breathingRate) {
+    // Independent states for each heart in the clover
+    static FlashState topHeartState;
+    static FlashState rightHeartState;
+    static FlashState bottomHeartState;
+    static FlashState leftHeartState;
+
+    // Clover center and radius
+    int centerX = cloverSprite.width() / 2;
+    int centerY = cloverSprite.height() / 2;
+    int radius = cloverSprite.width() / 15; // Adjust for heart size
+    // Draw four heart icons as a clover
+    drawHeartIcon(cloverSprite, centerX, centerY - radius * 3, radius, TFT_DARKGREEN, breathingRate,0,topHeartState); // Top heart
+    drawHeartIcon(cloverSprite, centerX + radius * 3, centerY, radius, TFT_DARKGREEN, breathingRate,90,rightHeartState); // Right heart
+    drawHeartIcon(cloverSprite, centerX, centerY + radius * 3, radius, TFT_DARKGREEN, breathingRate,180,bottomHeartState); // Bottom heart
+    drawHeartIcon(cloverSprite, centerX - radius * 3, centerY, radius, TFT_GREEN, breathingRate,270,leftHeartState); // Left heart
+}
+
 
 void showPage5
 (TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
@@ -104,21 +107,21 @@ void showPage5
 
     if (!isInitialized) {
         // Create combined waveforms sprite
-        waveformsSprite.createSprite(background.width() * 1 / 2, background.height());
+        waveformsSprite.createSprite(background.width() * 3 / 5, background.height());
         waveformsSprite.fillSprite(TFT_BLACK);
 
         // Create heart rate number sprite
-        heartRateSprite.createSprite(70, 75); // Adjust size to fit the number
+        heartRateSprite.createSprite(100, 75); // Adjust size to fit the number
         heartRateSprite.fillSprite(TFT_BLACK);
 
-        heartIconSprite.createSprite(70, 75); // Adjust size as needed
+        heartIconSprite.createSprite(35, 38); // Adjust size as needed
         heartIconSprite.fillSprite(TFT_BLACK);
 
         // Create breathing rate number sprite
-        breathRateSprite.createSprite(70, 75); // Adjust size to fit the number
+        breathRateSprite.createSprite(100, 75); // Adjust size to fit the number
         breathRateSprite.fillSprite(TFT_BLACK);
 
-        breathIconSprite.createSprite(70, 75); // Adjust size as needed
+        breathIconSprite.createSprite(35, 38); // Adjust size as needed
         breathIconSprite.fillSprite(TFT_BLACK);
 
         isInitialized = true;
@@ -180,39 +183,56 @@ void showPage5
     waveformsSprite.pushToSprite(&background, 0, 0, TFT_BLACK); // Align to the top-left corner
 
     // Update heart rate number sprite
-    String heartRateStr = radarData.heartRateEst < 10
-                          ? "0" + String((int)radarData.heartRateEst)
-                          : String((int)radarData.heartRateEst);
+    String heartRateStr;
+    if (radarData.heartRateEst < 10) {
+        heartRateStr = "00" + String((int)radarData.heartRateEst);
+    } else if (radarData.heartRateEst < 100) {
+        heartRateStr = "0" + String((int)radarData.heartRateEst);
+    } else {
+        heartRateStr = String((int)radarData.heartRateEst);
+    }
 
     // Update heart rate number sprite
     //heartRateSprite.fillSprite(TFT_BLACK); // Clear previous number
-    heartRateSprite.setTextColor(TFT_RED, TFT_YELLOW);
-    heartRateSprite.fillSprite(TFT_YELLOW);
-    heartRateSprite.drawString(String((int)radarData.heartRateEst), heartRateSprite.width()*0.05, heartRateSprite.height()*0.2,7);
-    heartRateSprite.pushToSprite(&background, background.width() - 70, 5, TFT_BLACK); // Top-right corner
+    heartRateSprite.setTextColor(TFT_RED, TFT_BLACK);
+    heartRateSprite.fillSprite(TFT_BLACK);
+    //heartRateSprite.drawString(String((int)radarData.heartRateEst), heartRateSprite.width()*0.05, heartRateSprite.height()*0.2,7);
+    heartRateSprite.drawString(heartRateStr, heartRateSprite.width()*0.05, heartRateSprite.height()*0.2,7);
+    heartRateSprite.pushToSprite(&background, background.width() - 100, 5, TFT_BLACK); // Top-right corner
 
-    heartIconSprite.fillSprite(TFT_WHITE);
+    heartIconSprite.fillSprite(TFT_BLACK);
     //heartIconSprite.pushToSprite(&background, background.width() - 150, 5, TFT_BLACK); // Top-right corner
 
     // Draw the heart icon based on heart rate
-    drawHeartIcon(heartIconSprite, (int)radarData.heartRateEst);
-    heartIconSprite.pushToSprite(&background, background.width() - 150, 5, TFT_BLACK); // Top-right corner
+    //drawHeartIcon(heartIconSprite, (int)radarData.heartRateEst);
+    drawSingleFlashingHeart(heartIconSprite, (int)radarData.heartRateEst);
+    heartIconSprite.pushToSprite(&background, background.width() - 128, 5, TFT_BLACK); // Top-right corner
 
 
     // Update breathing rate number sprite
+    String breathRateStr;
+    if (radarData.breathingRateEst < 10) {
+        breathRateStr = "00" + String((int)radarData.breathingRateEst);
+    } else if (radarData.breathingRateEst < 100) {
+        breathRateStr = "0" + String((int)radarData.breathingRateEst);
+    } else {
+        breathRateStr = String((int)radarData.breathingRateEst);
+    }
+    /*
     String breathRateStr = radarData.breathingRateEst < 10
                            ? "0" + String((int)radarData.breathingRateEst)
-                           : String((int)radarData.breathingRateEst);
+                           : String((int)radarData.breathingRateEst);*/
 
     //breathRateSprite.fillSprite(TFT_BLACK); // Clear previous number
-    breathRateSprite.setTextColor(TFT_GREEN, TFT_RED);
-    breathRateSprite.fillSprite(TFT_RED);
+    breathRateSprite.setTextColor(TFT_GREEN, TFT_BLACK);
+    breathRateSprite.fillSprite(TFT_BLACK);
     breathRateSprite.drawString(breathRateStr, breathRateSprite.width()*0.05, breathRateSprite.height()*0.2,7);
-    breathRateSprite.pushToSprite(&background, background.width() - 70, background.height() - 85, TFT_BLACK); // Bottom-right corner
+    breathRateSprite.pushToSprite(&background, background.width() - 100, background.height() - 85, TFT_BLACK); // Bottom-right corner
 
-    breathIconSprite.fillSprite(TFT_WHITE);
-    drawLeafIcon(breathIconSprite, (int)radarData.breathingRateEst);
-    breathIconSprite.pushToSprite(&background, background.width() - 150, background.height() - 85, TFT_BLACK); // Top-right corner
+    breathIconSprite.fillSprite(TFT_BLACK);
+    //drawLeafIcon(breathIconSprite, (int)radarData.breathingRateEst);
+    drawFourLeafClover(breathIconSprite, (int)radarData.breathingRateEst);
+    breathIconSprite.pushToSprite(&background, background.width() - 128, background.height() - 85, TFT_BLACK); // Top-right corner
 
 
     // Push the background sprite to the display
