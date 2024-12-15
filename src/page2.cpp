@@ -39,6 +39,8 @@ void showPage2(TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
     txtSprite.drawString("Energy Breath Wfm: " + String(radarData.sumEnergyBreathWfm, 2), 0, startY);
     startY += lineHeight;
     txtSprite.drawString("Energy Heart Wfm: " + String(radarData.sumEnergyHeartWfm, 2), 0, startY);
+    startY += lineHeight;
+    txtSprite.drawString("Obj. Range: " + String(radarData.range*100, 2) +"cm", 0, startY);
     
     // Push the sprite and update the display
     txtSprite.pushToSprite(&background, 10, 40, TFT_SKYBLUE);

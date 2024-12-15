@@ -30,12 +30,12 @@ const uint8_t expectedSyncHeader[] = {0x02, 0x01, 0x04, 0x03, 0x06, 0x05, 0x08, 
 int totalPacketsReceived = 0;
 int successfulParses = 0;
 
-int currentPage = 4;
+int currentPage = 1;
 const int totalPages = 5;            // Total number of pages
 
 // Pin definitions for buttons
-Button2 buttondown(14);                 // Up button on GPIO0
-Button2 buttonUp(0);              // Down button on GPIO14
+Button2 buttondown(0);                 // Up button on GPIO0
+Button2 buttonUp(14);              // Down button on GPIO14
 
 void showPage(int page) {
   switch (page) {
@@ -119,12 +119,12 @@ void printLog3(const RadarData& data) {
     float successRate = (successfulParses / (float)totalPacketsReceived) * 100.0f;
 
     // Print CSV log row
-    printf("%04X,%04X,%04X,%04X,%u,%u,%u,%u,%u,%u,%u,%u,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+    printf("%04X,%04X,%04X,%04X,%u,%u,%u,%u,%u,%u,%u,%u,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
            data.syncHeader[0], data.syncHeader[1], data.syncHeader[2], data.syncHeader[3],
            data.softwareVersion, data.totalPacketLength, data.hardwareVersion, data.frameNumber,
            data.cpuTime, data.humanDetected, data.outputStructureCount, data.reserved,
            data.maxRCS, data.heartRateEst, data.breathingRateEst,
-           data.sumEnergyBreathWfm, data.sumEnergyHeartWfm, (float)totalPacketsReceived);
+           data.sumEnergyBreathWfm, data.sumEnergyHeartWfm, data.range, (float)totalPacketsReceived);
 }
 
 bool readUARTData() {

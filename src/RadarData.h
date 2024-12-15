@@ -26,6 +26,7 @@ struct RadarData {
     float breathingRateEst;       // Breathing rate estimation output
     float sumEnergyBreathWfm;     // Total energy of breathing waveform (decays when no human is detected)
     float sumEnergyHeartWfm;      // Total energy of heart waveform (decays when no human is detected)
+    float range;                  // Range of target object
 };
 
 /*
