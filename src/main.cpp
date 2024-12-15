@@ -30,7 +30,7 @@ const uint8_t expectedSyncHeader[] = {0x02, 0x01, 0x04, 0x03, 0x06, 0x05, 0x08, 
 int totalPacketsReceived = 0;
 int successfulParses = 0;
 
-int currentPage = 1;
+int currentPage = 5;
 const int totalPages = 5;            // Total number of pages
 
 // Pin definitions for buttons

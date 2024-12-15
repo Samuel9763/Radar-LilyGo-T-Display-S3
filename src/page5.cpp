@@ -103,12 +103,17 @@ void showPage5
     static TFT_eSprite heartIconSprite = TFT_eSprite(&tft);
     static TFT_eSprite breathRateSprite = TFT_eSprite(&tft);
     static TFT_eSprite breathIconSprite = TFT_eSprite(&tft);
+    static TFT_eSprite ledBarSprite = TFT_eSprite(&tft);
     static bool isInitialized = false;
 
     if (!isInitialized) {
         // Create combined waveforms sprite
-        waveformsSprite.createSprite(background.width() * 3 / 5, background.height());
+        waveformsSprite.createSprite(background.width() * 3 / 5, background.height() * 8.5 / 10);
         waveformsSprite.fillSprite(TFT_BLACK);
+
+        // Create range LED bar sprite
+        ledBarSprite.createSprite(waveformsSprite.width()-10, 10);
+        ledBarSprite.fillSprite(TFT_SKYBLUE);
 
         // Create heart rate number sprite
         heartRateSprite.createSprite(100, 75); // Adjust size to fit the number
@@ -180,7 +185,7 @@ void showPage5
     waveformsSprite.drawRect(0, 0, waveformWidth, waveformHeight, TFT_WHITE);
 
     // Push waveforms sprite to the background
-    waveformsSprite.pushToSprite(&background, 0, 0, TFT_BLACK); // Align to the top-left corner
+    waveformsSprite.pushToSprite(&background, 0, 25, TFT_BLACK); // Align to the top-left corner
 
     // Update heart rate number sprite
     String heartRateStr;
@@ -235,6 +240,67 @@ void showPage5
     breathIconSprite.pushToSprite(&background, background.width() - 128, background.height() - 85, TFT_BLACK); // Top-right corner
 
 
+    char rangeStr[10]; // For displaying the range value
+    // Format range string
+    float displayRange = radarData.range * 100; // Convert range to centimeters
+    snprintf(rangeStr, sizeof(rangeStr), "%.2fcm", displayRange);
+
+    
+    // Display object range (top-left corner)
+    //txtSprite.setTextColor(TFT_WHITE, TFT_DARKGREEN); // White font on sky blue background
+    //txtSprite.drawString(rangeStr, 50, 10, 4); // Top-right corner
+
+    // Create LED bar sprite
+    int barWidth = ledBarSprite.width(); // Bar width is 3/4 of screen width
+    int barHeight = 10; // Height of the LED bar
+    int barX = (tft.width() - barWidth) / 2; // Center the bar horizontally
+    int barY = 0; // Position at the top of the screen
+
+    int totalLEDs = 20;
+    int ledWidth = barWidth / totalLEDs; // Width of each LED segment
+
+    int activeLEDs;
+    // Calculate the number of active LEDs based on radarData.range
+if (radarData.range < 0.3) {
+    activeLEDs = radarData.range / 0.3 * (totalLEDs * 0.2); // First 25% of LEDs
+} else if (radarData.range < 0.5) {
+    activeLEDs = (0.25 * totalLEDs) + (radarData.range - 0.3) / 0.2 * (totalLEDs * 0.25); // Next 25%
+} else if (radarData.range < 0.7) {
+    activeLEDs = (0.5 * totalLEDs) + (radarData.range - 0.5) / 0.2 * (totalLEDs * 0.25); // Next 25%
+} else {
+    activeLEDs = (0.75 * totalLEDs) + (radarData.range - 0.7) / 0.3 * (totalLEDs * 0.25); // Final 25%
+}
+
+// Ensure activeLEDs doesn't exceed totalLEDs
+if (activeLEDs > totalLEDs) activeLEDs = totalLEDs;
+
+// Loop through all LEDs to determine their colors and fill the sprite
+for (int i = 0; i < totalLEDs; ++i) {
+    int ledColor;
+
+    // Assign colors based on the LED position
+    if (i < totalLEDs * 0.25) {
+        ledColor = TFT_LIGHTGREY; // Dark green
+    } else if (i < totalLEDs * 0.5) {
+        ledColor = TFT_GREEN; // Light green
+    } else if (i < totalLEDs * 0.75) {
+        ledColor = TFT_YELLOW; // Yellow
+    } else {
+        ledColor = TFT_RED; // Red
+    }
+
+    // Fill active LEDs with their colors, inactive LEDs with black
+    if (i < activeLEDs) {
+        ledBarSprite.fillRect(i * ledWidth, 0, ledWidth - 1, barHeight, ledColor); // Active LED
+    } else {
+        ledBarSprite.fillRect(i * ledWidth, 0, ledWidth - 1, barHeight, TFT_BLACK); // Inactive LED
+    }
+}
+    // Push LED bar sprite to the background
+    ledBarSprite.pushToSprite(&background, 0, 0, TFT_BLACK);
+    //ledBarSprite.deleteSprite();
+
     // Push the background sprite to the display
     background.pushSprite(0, 0);
+
 }

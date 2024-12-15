@@ -76,40 +76,42 @@ void showPage1(TFT_eSPI &tft, TFT_eSprite &background, RadarData &radarData) {
     int ledWidth = barWidth / totalLEDs; // Width of each LED segment
 
     int activeLEDs;
-    if (radarData.range <= 0.5) {
-        activeLEDs = radarData.range * 10; // Map 0.00–1.00 to LEDs 1–10
-    } else if (radarData.range <= 1.0) {
-        activeLEDs = 10 + (radarData.range - 0.5) * 10; // Map 1.01–1.50 to LEDs 11–15
-    } else {
-        activeLEDs = 16 + (radarData.range - 1.0) * 4; // Map >1.51 to LEDs 16–20
-    }
-    /*
-    if (radarData.range <= 1.0) {
-        activeLEDs = radarData.range * 10; // Map 0.00–1.00 to LEDs 1–10
-    } else if (radarData.range <= 1.5) {
-        activeLEDs = 10 + (radarData.range - 1.0) * 10; // Map 1.01–1.50 to LEDs 11–15
-    } else {
-        activeLEDs = 16 + (radarData.range - 1.5) * 4; // Map >1.51 to LEDs 16–20
-    }
-    */
-    if (activeLEDs > totalLEDs) activeLEDs = totalLEDs; // Cap at max LEDs
+    if (radarData.range < 0.3) {
+    activeLEDs = radarData.range / 0.3 * (totalLEDs * 0.2); // First 25% of LEDs
+} else if (radarData.range < 0.5) {
+    activeLEDs = (0.25 * totalLEDs) + (radarData.range - 0.3) / 0.2 * (totalLEDs * 0.25); // Next 25%
+} else if (radarData.range < 0.7) {
+    activeLEDs = (0.5 * totalLEDs) + (radarData.range - 0.5) / 0.2 * (totalLEDs * 0.25); // Next 25%
+} else {
+    activeLEDs = (0.75 * totalLEDs) + (radarData.range - 0.7) / 0.3 * (totalLEDs * 0.25); // Final 25%
+}
 
-    for (int i = 0; i < totalLEDs; ++i) {
-        int ledColor;
-        if (i < 10) {
-            ledColor = TFT_GREEN; // First 15 LEDs are green
-        } else if (i < 15) {
-            ledColor = TFT_YELLOW; // Next 10 LEDs are yellow
-        } else {
-            ledColor = TFT_RED; // Last 5 LEDs are red
-        }
+// Ensure activeLEDs doesn't exceed totalLEDs
+if (activeLEDs > totalLEDs) activeLEDs = totalLEDs;
 
-        if (i < activeLEDs) {
-            ledBarSprite.fillRect(i * ledWidth, 0, ledWidth - 1, barHeight, ledColor); // Active LED
-        } else {
-            ledBarSprite.fillRect(i * ledWidth, 0, ledWidth - 1, barHeight, TFT_BLACK); // Inactive LED
-        }
+// Loop through all LEDs to determine their colors and fill the sprite
+for (int i = 0; i < totalLEDs; ++i) {
+    int ledColor;
+
+    // Assign colors based on the LED position
+    if (i < totalLEDs * 0.25) {
+        ledColor = TFT_LIGHTGREY; // Dark green
+    } else if (i < totalLEDs * 0.5) {
+        ledColor = TFT_GREEN; // Light green
+    } else if (i < totalLEDs * 0.75) {
+        ledColor = TFT_YELLOW; // Yellow
+    } else {
+        ledColor = TFT_RED; // Red
     }
+
+    // Fill active LEDs with their colors, inactive LEDs with black
+    if (i < activeLEDs) {
+        ledBarSprite.fillRect(i * ledWidth, 0, ledWidth - 1, barHeight, ledColor); // Active LED
+    } else {
+        ledBarSprite.fillRect(i * ledWidth, 0, ledWidth - 1, barHeight, TFT_BLACK); // Inactive LED
+    }
+}
+
 
 
     // Push text sprite to background and update screen
