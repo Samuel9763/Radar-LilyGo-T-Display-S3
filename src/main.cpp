@@ -203,6 +203,12 @@ bool readUARTData_old() {
 
 void setup() {
     
+    tft.init();
+    //delay(1000);
+    tft.fillScreen(TFT_WHITE); // Clear the screen to black
+    //delay(1000);
+    tft.setRotation(1);
+    
     Serial.begin(9600);  // 初始化 Serial 通訊，波特率設置為 9600
 
 
@@ -211,8 +217,7 @@ void setup() {
     digitalWrite(PIN_POWER_ON, HIGH);
     digitalWrite(PIN_LCD_BL, HIGH);
 
-    tft.init();
-    tft.setRotation(1);
+    
     background.createSprite(tft.width(), tft.height());
     background.fillSprite(TFT_BLACK);
     // Configure buttons
@@ -224,10 +229,10 @@ void setup() {
 
     // 設定長按事件處理器
     buttondown.setLongClickHandler(handleLongPress);  // 當長按“向上”按鈕時，呼叫 handleLongPress
-
+    //delay(12000);
     // UART initialization
     uart.begin(BAUD_RATE, SERIAL_8N1, RX_PIN, TX_PIN);
-    
+    //delay(12000);
     printLog3Header();
     // Display the initial page
     showPage(currentPage);
